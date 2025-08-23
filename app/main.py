@@ -18,14 +18,6 @@ app.add_middleware(
 
 app = FastAPI(title="Satellite Risk Dashboard API")
 
-@app.get("/events")
-def events(top_n: int = 6):
-    """
-    Ranked conjunction events from CSV + local TLEs (dynamic).
-    Returns only the top N events as produced by predict_top_events.
-    """
-    return predict_top_events(top_n=top_n)
-
 @app.get("/dashboard")
 def dashboard():
     """
