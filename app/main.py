@@ -15,33 +15,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class PredictRequest(BaseModel):
-    satellite_tle: str
-    debris_tle: str
-    horizon_minutes: Optional[int] = 60
-    step_seconds: Optional[int] = 30
 
-@app.get("/")
-def root() -> Dict[str, Any]:
-    return {"status": "ok", "service": "OrbitXOS", "routes": ["/events", "/dashboard", "/predict"]}
+app = FastAPI(title="Satellite Risk Dashboard API")
 
 @app.get("/events")
 def events(top_n: int = 6):
-    """Ranked conjunction events from CSV + local TLEs (dynamic)."""
+    """
+    Ranked conjunction events from CSV + local TLEs (dynamic).
+    Returns only the top N events as produced by predict_top_events.
+    """
     return predict_top_events(top_n=top_n)
 
 @app.get("/dashboard")
 def dashboard():
-    """Homepage cards, recent alerts, high-priority tracking — dynamic."""
+    """
+    Homepage cards, recent alerts, high-priority tracking — dynamic.
+    Returns the payload produced by build_dashboard.
+    """
     return build_dashboard()
-
-@app.post("/predict")
-def predict(req: PredictRequest = Body(...)):
-    """SGP4 closest approach for two raw TLE blocks."""
-    return predict_safe_path(
-        satellite_tle=req.satellite_tle,
-        debris_tle=req.debris_tle,
-        horizon_minutes=req.horizon_minutes,
-        step_seconds=req.step_seconds
-    )
 
