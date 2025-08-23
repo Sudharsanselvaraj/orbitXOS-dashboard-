@@ -7,7 +7,7 @@ from typing import Dict, Any, List
 
 from app.utils import load_tle_map, find_tle_block, risk_bucket, normalize_probabilities
 
-BASE_DIR = os.path.dirname(_file_)
+BASE_DIR = os.path.dirname(__file__)
 CSV_PATH = os.path.join(BASE_DIR, "reduced_file2.csv")
 TLE_FILE = os.path.join(BASE_DIR, "active_satellites_tle.txt")
 MODEL_PATH = os.path.join(BASE_DIR, "prop_risk_model_resaved.joblib")
