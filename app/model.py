@@ -34,62 +34,6 @@ def fetch_tle(name: str) -> str:
     """Return TLE string for a satellite or debris."""
     return find_tle_block(_tle_map, name)
 
-def predict_top_events(top_n: int = 6) -> Dict[str, Any]:
-    """Return top N ranked conjunction events."""
-    try:
-        df = pd.read_csv(CSV_PATH)
-        if not {"i_name","j_name","tca"}.issubset(df.columns):
-            return {"critical_events": [], "status": "error", "message": "CSV missing necessary columns"}
-
-        df["EPOCH_dt"] = pd.to_datetime(df["tca"], errors="coerce", utc=True)
-        # Probability
-        if model:
-            try:
-                feats = list(getattr(model, "feature_names_in_", df.columns[:model.n_features_in_]))
-                X = df[feats].fillna(0.0)
-                df["raw_prob"] = model.predict_proba(X)[:, 1]
-            except Exception:
-                df["raw_prob"] = 1.0 / (1.0 + df["miss_km"].astype(float))
-        else:
-            df["raw_prob"] = 1.0 / (1.0 + df["miss_km"].astype(float))
-
-        df["probability"] = normalize_probabilities(df["raw_prob"].tolist())
-
-        now = datetime.now(timezone.utc)
-        cutoff = now + timedelta(days=3)
-        view_df = df[(df["EPOCH_dt"] >= now) & (df["EPOCH_dt"] <= cutoff)].copy()
-        if view_df.empty:
-            return {"critical_events": [], "status": "ok", "message": "No events in window."}
-
-        view_df = view_df.sort_values(["probability", "EPOCH_dt"], ascending=[False, True]).head(top_n)
-
-        results: List[Dict[str, Any]] = []
-        for _, row in view_df.iterrows():
-            prob = float(row["probability"])
-            results.append({
-                "satellite": row["i_name"],
-                "satellite_tle": fetch_tle(row["i_name"]),
-                "debris": row["j_name"],
-                "debris_tle": fetch_tle(row["j_name"]),
-                "tca": str(row["tca"]),
-                "time_to_impact": time_to_impact_str(str(row["tca"])),
-                "miss_km": float(row.get("miss_km", 0.0)),
-                "vrel_kms": float(row.get("vrel_kms", 0.0)),
-                "probability": f"{prob*100:.1f}%",
-                "risk_level": risk_bucket(prob),
-                "maneuver_suggestion": (
-                    "No action needed" if prob < 0.3 else
-                    "Monitor, prepare retrograde burn" if prob < 0.6 else
-                    "Plan radial maneuver" if prob < 0.8 else
-                    "Execute immediate retrograde burn"
-                ),
-                "confidence": f"{prob*100:.1f}%"
-            })
-
-        return {"critical_events": results, "status": "ok"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
 def build_dashboard() -> Dict[str, Any]:
     """Return dashboard payload for homepage."""
     items = predict_top_events(top_n=12).get("critical_events", [])
