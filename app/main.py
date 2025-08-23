@@ -1,28 +1,23 @@
-from fastapi import FastAPI, Body
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from app.model import predict_top_events
 
-from app.model import predict_top_events, build_dashboard
-from app.predictor import predict_safe_path
+app = FastAPI(title="🚀 Satellite Collision Risk API")
 
-app = FastAPI(title="OrbitXOS API", version="0.4.0")
-
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],    # Allow all origins
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+@app.get("/")
+def root():
+    return {"message": "API is running", "endpoints": ["/predict"]}
 
-app = FastAPI(title="Satellite Risk Dashboard API")
-
-@app.get("/dashboard")
-def dashboard():
-    """
-    Homepage cards, recent alerts, high-priority tracking — dynamic.
-    Returns the payload produced by build_dashboard.
-    """
-    return build_dashboard()
-
+@app.get("/predict")
+def predict():
+    """Return top 4 most critical conjunction events."""
+    return predict_top_events(top_n=4)
